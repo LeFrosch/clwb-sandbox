@@ -1,0 +1,9 @@
+#! /usr/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+# Notify service manager when sshd is up
+s6-notifyoncheck -w 500 -c "nc -z localhost 22"
+
+/usr/sbin/sshd -D

@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+
+# get arguments
+IDE_BIN=$1
+VERSION=$2
+
+# get plugins to install
+shift 2
+PLUGINS=$(echo "$@")
+
+case ${IDE_BIN} in
+  "idea")
+    IDE_NAME=IntelliJ
+    URL="https://download.jetbrains.com/idea/ideaIU-$VERSION-aarch64.tar.gz"
+    ;;
+  "clion")
+    IDE_NAME=CLion
+    URL="https://download.jetbrains.com/cpp/CLion-$VERSION-aarch64.tar.gz"
+    ;;
+  *)
+    echo "unsupported IDE: ${IDE_BIN}"
+    exit 1
+    ;;
+esac
+
+DIRECTORY=/opt/jetbrains/${IDE_BIN}-${VERSION}
+
+# download the installation package
+mkdir -p $DIRECTORY 
+curl -sL $URL | tar -xz --strip-components=1 -C $DIRECTORY
+
+# install the plugins for the abc user
+su abc -c "$DIRECTORY/bin/$IDE_BIN installPlugins https://plugins.jetbrains.com/plugin $PLUGINS"
+su abc -c "$DIRECTORY/bin/remote-dev-server registerBackendLocationForGateway"
+su abc -c "$DIRECTORY/bin/remote-dev-server installPlugins https://plugins.jetbrains.com/plugin $PLUGINS"
+
+# install the .desktop file
+cat > "/usr/share/applications/$IDE_BIN-$VERSION.desktop" << EOF
+[Desktop Entry]
+Version=$VERSION
+Type=Application
+Name=$IDE_NAME ($VERSION)
+Icon=$DIRECTORY/bin/$IDE_BIN.png
+Exec=$DIRECTORY/bin/$IDE_BIN %f
+EOF
