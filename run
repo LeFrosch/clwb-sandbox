@@ -7,21 +7,69 @@ import hashlib
 import argparse
 
 
+def fatal_error(message):
+    """Prints an error message to stderr and exits."""
+    print(f"Error: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def run_command(cmd, check=True, capture_output=True, text=True, error_message=None):
+    """Runs a command, handles common subprocess errors, and returns the result."""
+    command_str = ' '.join(cmd)
+    try:
+        return subprocess.run(cmd, check=check, capture_output=capture_output, text=text)
+    except FileNotFoundError:
+        fatal_error(f"Command '{cmd[0]}' not found. Is it installed and in your PATH?")
+    except subprocess.CalledProcessError as e:
+        if error_message:
+            fatal_error(f"{error_message}: {e.stderr.strip()}")
+        else:
+            fatal_error(f"Command '{command_str}' failed: {e.stderr.strip()}")
+
+
+def check_command_exists(command):
+    """Checks if a command exists on the system by running `command --version`."""
+    run_command([command, '--version'], error_message=f"Command '{command}' is not working correctly")
+
+
+def get_workspace_dir(workspace_source):
+    """
+    Determines the workspace directory. If the source is a Git URL,
+    it clones the repository. If it's a local path, it validates it.
+    Returns the absolute path to the workspace directory.
+    """
+    if workspace_source.startswith(('https://', 'http://', 'git@')):
+        check_command_exists('git')
+        project_name = os.path.basename(workspace_source)
+        if project_name.endswith('.git'):
+            project_name = project_name[:-4]
+
+        workspace_dir = f"/tmp/workspaces/{project_name}"
+
+        if os.path.isdir(os.path.join(workspace_dir, '.git')):
+            print(f"Workspace '{project_name}' already cloned in '{workspace_dir}'. Using existing directory.")
+        elif os.path.exists(workspace_dir):
+            fatal_error(f"Path '{workspace_dir}' exists but is not a git repository.")
+        else:
+            print(f"Cloning workspace from '{workspace_source}' into '{workspace_dir}'...")
+            clone_cmd = ['git', 'clone', workspace_source, workspace_dir]
+            run_command(clone_cmd, error_message="Error cloning repository")
+        return os.path.abspath(workspace_dir)
+    else:
+        # It's a local path
+        if not os.path.isdir(workspace_source):
+            fatal_error(f"Workspace directory '{workspace_source}' not found.")
+        return os.path.abspath(workspace_source)
+
+
 def container_derive_port(container_name):
     """Derives a stable port from the container name."""
-
-    # use a part of the SHA256 hash to get a number
     hash_object = hashlib.sha256(container_name.encode())
     hex_dig = hash_object.hexdigest()
-
-    # take the first 8 characters of the hash and convert to an integer
     hash_int = int(hex_dig[:8], 16)
-
-    # map the integer to a high port range to avoid conflicts
     port_range_start = 20000
     port_range_end = 60000
     port_range_size = port_range_end - port_range_start
-
     return port_range_start + (hash_int % port_range_size)
 
 
@@ -29,10 +77,10 @@ def container_find_id(container_name):
     """Checks if a container exists and returns its ID, otherwise returns None."""
     cmd = [
         'docker', 'ps', '-a',
-        '--filter', f'name=^{container_name}$',
+        '--filter', f'name=^{container_name}',
         '--format', '{{.ID}}'
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_command(cmd, check=False)
     return result.stdout.strip() or None
 
 
@@ -45,38 +93,41 @@ def container_remove(container_name):
 
     print(f"Removing container '{container_name}'...")
     cmd = ['docker', 'rm', '-f', container_name]
-    subprocess.run(cmd, check=True, capture_output=True)
+    run_command(cmd, error_message=f"Failed to remove container '{container_name}'")
     print(f"Container '{container_name}' removed successfully.")
 
 
 def container_print_info(name):
     port = container_derive_port(name)
-    id = container_find_id(name)
+    container_id = container_find_id(name)
+    if not container_id:
+        print(f"Container '{name}' does not appear to be running.")
+        return
 
-    print(f'Docker container running: {id}')
+    print(f'Docker container running: {container_id}')
     print(f'-> connect with ssh: ssh abc@localhost -p {port}')
     print(f"-> connect with rdp: rdp://abc@localhost:{port + 1}")
     print(f"-> intellij backend port: {port + 2}")
+    print(f"-> agentlib debug port: {port + 3}")
 
 
 def container_create(name, workspace_dir, clwb_dir, image_name):
     """Creates and starts a new container on stable ports derived from its name."""
     port = container_derive_port(name)
-
     print(f"Starting new container '{name}'...")
-
     docker_command = [
         'docker', 'run', '-d',
         '-p', f'{port + 0}:22',
         '-p', f'{port + 1}:3389',
         '-p', f'{port + 2}:5991',
+        '-p', f'{port + 3}:5005',
         '-v', f'{workspace_dir}:/config/workspace',
         '-v', f'{clwb_dir}:/config/clwb',
         '--name', name,
         '--security-opt', 'seccomp=unconfined',
         image_name
     ]
-    subprocess.run(docker_command, check=True, capture_output=True)
+    run_command(docker_command, error_message=f"Failed to create container '{name}'")
 
 
 def main():
@@ -87,7 +138,7 @@ def main():
     parser.add_argument(
         '--workspace',
         required=True,
-        help="The local directory to mount into the container's /config/workspace."
+        help="The local directory or GitHub URL for the workspace."
     )
     parser.add_argument(
         '--clwb',
@@ -107,37 +158,30 @@ def main():
     )
     args = parser.parse_args()
 
-    # Validate the directory paths
-    if not os.path.isdir(args.workspace):
-        print(f"Error: Directory '{args.workspace}' not found.")
-        sys.exit(1)
-    if not os.path.isdir(args.clwb):
-        print(f"Error: Directory '{args.clwb}' not found.")
-        sys.exit(1)
+    workspace_dir = get_workspace_dir(args.workspace)
 
-    workspace_dir = os.path.abspath(args.workspace)
+    if not os.path.isdir(args.clwb):
+        fatal_error(f"CLWB directory '{args.clwb}' not found.")
+
+    check_command_exists('docker')
+
     clwb_dir = os.path.abspath(args.clwb)
     container_name = f"bazel-{os.path.basename(workspace_dir)}"
-    image_name = "isolation"  # The Docker image to use
+    image_name = "isolation"
 
-    try:
-        if args.remove:
-            container_remove(container_name)
-            return
+    if args.remove:
+        container_remove(container_name)
+        return
 
-        if args.recreate:
-            container_remove(container_name)
-
-        container_create(container_name, workspace_dir, clwb_dir, image_name)
+    if args.recreate:
+        container_remove(container_name)
+    elif container_find_id(container_name):
+        print(f"Container '{container_name}' already exists. Use --recreate to build a new one.")
         container_print_info(container_name)
+        return
 
-    except FileNotFoundError:
-        print("Error: 'docker' command not found. Is Docker installed and in your PATH?")
-        sys.exit(1)
-    except subprocess.CalledProcessError as e:
-        error_message = e.stderr.decode().strip()
-        print(f"An error occurred with Docker: {error_message}")
-        sys.exit(1)
+    container_create(container_name, workspace_dir, clwb_dir, image_name)
+    container_print_info(container_name)
 
 
 if __name__ == "__main__":

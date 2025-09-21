@@ -17,7 +17,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     vim \
     neovim \
     zoxide \
-    openssh-server
+    openssh-server \
+    socat \
+    ripgrep
 
 # clean up
 RUN apt-get autoclean
@@ -37,9 +39,9 @@ RUN curl -sL "https://github.com/bazelbuild/bazelisk/releases/download/v1.27.0/b
 RUN chmod +x /usr/local/bin/bazelisk
 
 # install IDEs
-RUN /defaults/install_ide.sh idea 2025.2.1 org.jetbrains.bazel DevKit
-RUN /defaults/install_ide.sh clion 2025.2.2 com.google.idea.bazel.clwb
-RUN /defaults/install_ide.sh clion 2025.1.5.1 com.google.idea.bazel.clwb
+RUN /defaults/install_ide.sh idea 2025.2.1 org.jetbrains.bazel DevKit IdeaVIM
+RUN /defaults/install_ide.sh clion 2025.1.5.1 com.google.idea.bazel.clwb IdeaVIM
+RUN /defaults/install_ide.sh clion 2025.2.2 com.google.idea.bazel.clwb IdeaVIM
 
 # install JBR 
 RUN mkdir -p /opt/jetbrains/jbr
@@ -57,7 +59,6 @@ RUN echo "AllowUsers abc" >> /etc/ssh/sshd_config
 
 # configure alternatives
 RUN update-alternatives --install /usr/local/bin/bazel bazel /usr/local/bin/bazelisk 1
-RUN update-alternatives --install /usr/local/bin/idea idea /opt/jetbrains/idea-2025.2.1/bin/idea 1
 
 # user configuration...
 USER abc

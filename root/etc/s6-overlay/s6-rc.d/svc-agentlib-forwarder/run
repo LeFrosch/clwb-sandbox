@@ -1,0 +1,7 @@
+#! /usr/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+# Forward port 0.0.0.0:5005 to 127.0.0.1:5006
+socat TCP4-LISTEN:5005,fork,reuseaddr TCP4:127.0.0.1:5006

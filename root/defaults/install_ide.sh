@@ -45,3 +45,6 @@ Name=$IDE_NAME ($VERSION)
 Icon=$DIRECTORY/bin/$IDE_BIN.png
 Exec=$DIRECTORY/bin/$IDE_BIN %f
 EOF
+
+# update alternative for the IDE
+update-alternatives --install "/usr/local/bin/$IDE_BIN" "$IDE_BIN" "/opt/jetbrains/$IDE_BIN-$VERSION/bin/$IDE_BIN" 1
