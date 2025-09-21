@@ -1,0 +1,7 @@
+[Desktop Entry]
+Exec=konsole -e /defaults/idea_backend.sh
+Icon=
+Name=IntelliJ Backend
+Path=
+Terminal=False
+Type=Application

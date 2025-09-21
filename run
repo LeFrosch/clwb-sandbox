@@ -2,19 +2,30 @@
 
 import sys
 import os
-import socket
 import subprocess
+import hashlib
 import argparse
 
 
-def find_free_port():
-    """Finds and returns an available TCP port."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('localhost', 0))
-        return s.getsockname()[1]
+def container_derive_port(container_name):
+    """Derives a stable port from the container name."""
+
+    # use a part of the SHA256 hash to get a number
+    hash_object = hashlib.sha256(container_name.encode())
+    hex_dig = hash_object.hexdigest()
+
+    # take the first 8 characters of the hash and convert to an integer
+    hash_int = int(hex_dig[:8], 16)
+
+    # map the integer to a high port range to avoid conflicts
+    port_range_start = 20000
+    port_range_end = 60000
+    port_range_size = port_range_end - port_range_start
+
+    return port_range_start + (hash_int % port_range_size)
 
 
-def get_container_id(container_name):
+def container_find_id(container_name):
     """Checks if a container exists and returns its ID, otherwise returns None."""
     cmd = [
         'docker', 'ps', '-a',
@@ -25,19 +36,9 @@ def get_container_id(container_name):
     return result.stdout.strip() or None
 
 
-def get_container_port(container_name):
-    """Gets the host port mapped to the container's port 22."""
-    cmd = ['docker', 'port', container_name, '22/tcp']
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    mapping = result.stdout.strip()
-    if ':' in mapping:
-        return mapping.split(':')[-1]
-    return None
-
-
-def remove_container(container_name):
+def container_remove(container_name):
     """Stops and removes the specified container if it exists."""
-    container_id = get_container_id(container_name)
+    container_id = container_find_id(container_name)
     if not container_id:
         print(f"Container '{container_name}' not found. Nothing to remove.")
         return
@@ -48,21 +49,34 @@ def remove_container(container_name):
     print(f"Container '{container_name}' removed successfully.")
 
 
-def create_container(container_name, target_dir, image_name):
-    """Creates and starts a new container on a free port."""
-    free_port = find_free_port()
-    print(f"Starting new container '{container_name}'...")
-    print(f"Mounting '{target_dir}' to /workspace...")
+def container_print_info(name):
+    port = container_derive_port(name)
+    id = container_find_id(name)
+
+    print(f'Docker container running: {id}')
+    print(f'-> connect with ssh: ssh abc@localhost -p {port}')
+    print(f"-> connect with rdp: rdp://abc@localhost:{port + 1}")
+    print(f"-> intellij backend port: {port + 2}")
+
+
+def container_create(name, workspace_dir, clwb_dir, image_name):
+    """Creates and starts a new container on stable ports derived from its name."""
+    port = container_derive_port(name)
+
+    print(f"Starting new container '{name}'...")
+
     docker_command = [
         'docker', 'run', '-d',
-        '-p', f'{free_port}:22',
-        '-v', f'{target_dir}:/workspace',
-        '--name', container_name,
+        '-p', f'{port + 0}:22',
+        '-p', f'{port + 1}:3389',
+        '-p', f'{port + 2}:5991',
+        '-v', f'{workspace_dir}:/config/workspace',
+        '-v', f'{clwb_dir}:/config/clwb',
+        '--name', name,
+        '--security-opt', 'seccomp=unconfined',
         image_name
     ]
     subprocess.run(docker_command, check=True, capture_output=True)
-    print(
-        f"Container started. Connect with: ssh root@localhost -p {free_port}")
 
 
 def main():
@@ -71,8 +85,14 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
-        'workspace_path',
-        help="The local directory to mount into the container's /workspace."
+        '--workspace',
+        required=True,
+        help="The local directory to mount into the container's /config/workspace."
+    )
+    parser.add_argument(
+        '--clwb',
+        required=True,
+        help="The local directory to mount into the container's /config/clwb."
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
@@ -87,34 +107,29 @@ def main():
     )
     args = parser.parse_args()
 
-    # Validate the directory path
-    if not os.path.isdir(args.workspace_path):
-        print(f"Error: Directory '{args.workspace_path}' not found.")
+    # Validate the directory paths
+    if not os.path.isdir(args.workspace):
+        print(f"Error: Directory '{args.workspace}' not found.")
+        sys.exit(1)
+    if not os.path.isdir(args.clwb):
+        print(f"Error: Directory '{args.clwb}' not found.")
         sys.exit(1)
 
-    target_dir = os.path.abspath(args.workspace_path)
-    container_name = f"bazel-{os.path.basename(target_dir)}"
+    workspace_dir = os.path.abspath(args.workspace)
+    clwb_dir = os.path.abspath(args.clwb)
+    container_name = f"bazel-{os.path.basename(workspace_dir)}"
     image_name = "isolation"  # The Docker image to use
 
     try:
         if args.remove:
-            remove_container(container_name)
-        elif args.recreate:
-            remove_container(container_name)
-            create_container(container_name, target_dir, image_name)
-        else:
-            # Default behavior: start if not present, otherwise show status
-            container_id = get_container_id(container_name)
-            if container_id:
-                print(f"Container '{container_name}' already exists.")
-                host_port = get_container_port(container_name)
-                if host_port:
-                    print(f"Connect with: ssh root@localhost -p {host_port}")
-                else:
-                    print(f"Warning: Could not determine port for container '{container_name}'.")
-                    print(f"Is it running? Try starting it with 'docker start {container_name}'")
-            else:
-                create_container(container_name, target_dir, image_name)
+            container_remove(container_name)
+            return
+
+        if args.recreate:
+            container_remove(container_name)
+
+        container_create(container_name, workspace_dir, clwb_dir, image_name)
+        container_print_info(container_name)
 
     except FileNotFoundError:
         print("Error: 'docker' command not found. Is Docker installed and in your PATH?")

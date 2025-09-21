@@ -1,0 +1,10 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+if [[ -d /config/clwb ]]; then
+	rm -rf /config/clwb/bazel-*
+fi
+
+if [[ -d /config/workspace ]]; then
+	rm -rf /config/workspace/bazel-*
+fi

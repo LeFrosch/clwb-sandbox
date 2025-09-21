@@ -35,19 +35,17 @@ RUN chown -R abc:abc /config
 # install bazelisk as bazel
 RUN curl -sL "https://github.com/bazelbuild/bazelisk/releases/download/v1.27.0/bazelisk-linux-arm64" > /usr/local/bin/bazelisk
 RUN chmod +x /usr/local/bin/bazelisk
-RUN update-alternatives --install /usr/local/bin/bazel bazel /usr/local/bin/bazelisk 1
 
 # install IDEs
 RUN /defaults/install_ide.sh idea 2025.2.1 org.jetbrains.bazel DevKit
-# RUN /defaults/install_ide.sh clion 2025.2.2 com.google.idea.bazel.clwb
-# RUN /defaults/install_ide.sh clion 2025.1.5.1 com.google.idea.bazel.clwb
+RUN /defaults/install_ide.sh clion 2025.2.2 com.google.idea.bazel.clwb
+RUN /defaults/install_ide.sh clion 2025.1.5.1 com.google.idea.bazel.clwb
 
 # install JBR 
-# RUN mkdir -p /opt/jetbrains/jbr 
-# RUN curl -sL "https://cache-redirector.jetbrains.com/intellij-jbr/jbr-21.0.8-linux-aarch64-b1115.48.tar.gz" | tar -xz --strip-components=1 -C /opt/jetbrains/jbr
+RUN mkdir -p /opt/jetbrains/jbr
+RUN curl -sL "https://cache-redirector.jetbrains.com/intellij-jbr/jbr-21.0.8-linux-aarch64-b1115.48.tar.gz" | tar -xz --strip-components=1 -C /opt/jetbrains/jbr
 
-# clone frequently used things 
-RUN git clone https://github.com/bazelbuild/intellij.git /config/clwb
+# clone dotfiles
 RUN git clone https://github.com/LeFrosch/dotfiles.git /opt/dotfiles
 
 # configure ssh 
@@ -56,6 +54,10 @@ RUN mkdir /run/sshd
 RUN sed -i 's/^#?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config 
 RUN sed -i 's/^#?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
 RUN echo "AllowUsers abc" >> /etc/ssh/sshd_config                                               
+
+# configure alternatives
+RUN update-alternatives --install /usr/local/bin/bazel bazel /usr/local/bin/bazelisk 1
+RUN update-alternatives --install /usr/local/bin/idea idea /opt/jetbrains/idea-2025.2.1/bin/idea 1
 
 # user configuration...
 USER abc
