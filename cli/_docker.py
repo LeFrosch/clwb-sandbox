@@ -12,7 +12,7 @@ def docker_get_client():
         log_error('Docker is not running, please start Docker and try again')
 
 
-def docker_create_container(client, name, ports, volumes):
+def docker_create_container(client, name, ports, volumes, environment=None):
     try:
         return client.containers.run(
             IMAGE_NAME,
@@ -20,6 +20,7 @@ def docker_create_container(client, name, ports, volumes):
             name=CONTAINER_PREFIX + name,
             ports=ports,
             volumes=volumes,
+            environment=environment,
             security_opt=['seccomp=unconfined'],
         )
     except docker.errors.APIError as e:
@@ -37,7 +38,7 @@ def docker_get_container(client, name):
 
 
 def docker_list_containers(client, all=True, filters=None):
-    return client.containers.list(all=all, filters=filters)
+    return client.containers.list(all=all, filters={'ancestor': IMAGE_NAME})
 
 
 def docker_remove_container(container, force=False):

@@ -10,7 +10,7 @@ def configure(parser: argparse.ArgumentParser):
 
 def execute(args: argparse.Namespace):
     client = docker_get_client()
-    containers = docker_list_containers(client, filters={'name': 'bazel-*'})
+    containers = docker_list_containers(client)
 
     if not containers:
         log('no bazel containers found')
