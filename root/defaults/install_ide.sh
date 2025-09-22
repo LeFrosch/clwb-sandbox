@@ -10,14 +10,20 @@ VERSION=$2
 shift 2
 PLUGINS=$(echo "$@")
 
+if [[ $(arch) == "arm64" ]]; then
+  ARCH_SUFFIX="-aarch64"
+else 
+  ARCH_SUFFIX=""
+fi
+
 case ${IDE_BIN} in
   "idea")
     IDE_NAME=IntelliJ
-    URL="https://download.jetbrains.com/idea/ideaIU-$VERSION-aarch64.tar.gz"
+    URL="https://download.jetbrains.com/idea/ideaIU-$VERSION$ARCH_SUFFIX.tar.gz"
     ;;
   "clion")
     IDE_NAME=CLion
-    URL="https://download.jetbrains.com/cpp/CLion-$VERSION-aarch64.tar.gz"
+    URL="https://download.jetbrains.com/cpp/CLion-$VERSION$ARCH_SUFFIX.tar.gz"
     ;;
   *)
     echo "unsupported IDE: ${IDE_BIN}"

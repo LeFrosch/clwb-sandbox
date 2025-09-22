@@ -19,7 +19,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     zoxide \
     openssh-server \
     socat \
-    ripgrep
+    ripgrep \
+    htop \
+    zip
 
 # clean up
 RUN apt-get autoclean
@@ -35,8 +37,7 @@ RUN chsh -s /usr/bin/zsh abc
 RUN chown -R abc:abc /config
 
 # install bazelisk as bazel
-RUN curl -sL "https://github.com/bazelbuild/bazelisk/releases/download/v1.27.0/bazelisk-linux-arm64" > /usr/local/bin/bazelisk
-RUN chmod +x /usr/local/bin/bazelisk
+RUN /defaults/install_bazel.sh
 
 # install IDEs
 RUN /defaults/install_ide.sh idea 2025.2.1 org.jetbrains.bazel DevKit IdeaVIM
@@ -57,9 +58,6 @@ RUN sed -i 's/^#?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 RUN sed -i 's/^#?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
 RUN echo "AllowUsers abc" >> /etc/ssh/sshd_config                                               
 
-# configure alternatives
-RUN update-alternatives --install /usr/local/bin/bazel bazel /usr/local/bin/bazelisk 1
-
 # user configuration...
 USER abc
 
@@ -75,6 +73,9 @@ RUN rm /config/.zshrc && stow -t /config -d /opt/dotfiles .
 
 # ...and switch back to root 
 USER root
+
+# clear tmp, avoids bugs with remdev permission issues
+RUN rm -rf /tmp/*
 
 # expose ssh port
 EXPOSE 22
