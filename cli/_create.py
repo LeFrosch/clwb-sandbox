@@ -7,8 +7,11 @@ from ._util import get_workspace_dir, container_derive_port, log, log_error
 
 def create_container(client, name, workspace_dir, clwb_dir):
     """Creates and starts a new container on stable ports derived from its name."""
+
     log(f"starting new container '{name}'")
+
     port = container_derive_port(name)
+
     ports = {
         '22/tcp': port,
         '3389/tcp': port + 1,
@@ -19,11 +22,18 @@ def create_container(client, name, workspace_dir, clwb_dir):
         workspace_dir: {'bind': '/config/workspace', 'mode': 'rw'},
         clwb_dir: {'bind': '/config/clwb', 'mode': 'rw'},
     }
-    docker_create_container(client, name, ports, volumes)
+    environment = {  # todo, in practice this should be retrived from `id $(whoami)`
+        'PUID': '1000',
+        'PGID': '1000',
+        'TZ': 'Etc/UTC',
+    }
+
+    docker_create_container(client, name, ports, volumes, environment)
 
 
 def print_container_info(client, name):
     container = docker_get_container(client, name)
+
     if container:
         port = container_derive_port(name)
         log(f'Docker container running: {container.short_id}')
