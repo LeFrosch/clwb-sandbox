@@ -8,6 +8,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     libc++-dev \
     libc++abi-dev \
     python3 \
+    python3-dev \
     openjdk-21-jdk \
     tcl \
     zsh \
@@ -21,11 +22,15 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     socat \
     ripgrep \
     htop \
-    zip
+    zip \
+    unzip
 
 # clean up
 RUN apt-get autoclean
 RUN rm -rf /config/.cache /var/lib/apt/lists/* /var/tmp/* /tmp/*
+
+# alternatives
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # add local files
 COPY /root /
