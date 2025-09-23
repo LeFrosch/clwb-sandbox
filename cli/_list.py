@@ -16,15 +16,17 @@ def execute(args: argparse.Namespace):
         log('no bazel containers found')
         return
 
-    log('bazel containers:')
+    print(f'{"NAME":<30} {"ID":<15} {"STATUS":<15} {"SSH PORT"}')
+    print('-' * 70)
+
     for container in containers:
         ports = container.attrs['HostConfig']['PortBindings']
         ssh_port = 'n/a'
         if ports and '22/tcp' in ports and ports['22/tcp']:
             ssh_port = ports['22/tcp'][0]['HostPort']
 
-        print(f'  name: {container.name}')
-        print(f'    ID: {container.short_id}')
-        print(f'    status: {container.status}')
-        print(f'    SSH port: {ssh_port}')
-        print('-' * 20)
+        name = container.name
+        short_id = container.short_id
+        status = container.status
+
+        print(f'{name:<30} {short_id:<15} {status:<15} {ssh_port}')

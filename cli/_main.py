@@ -5,6 +5,7 @@ from . import (
     _stop as stop,
     _start as start,
     _list as list,
+    _info as info,
     _remove as remove,
 )
 
@@ -52,6 +53,13 @@ def parse_arguments() -> argparse.Namespace:
     )
     list_parser.set_defaults(execute=list.execute)
     list.configure(list_parser)
+
+    info_parser = commands.add_parser(
+        'info',
+        help='show detailed information about a container',
+    )
+    info_parser.set_defaults(execute=info.execute)
+    info.configure(info_parser)
 
     remove_parser = commands.add_parser(
         'remove',

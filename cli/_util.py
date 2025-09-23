@@ -82,9 +82,9 @@ def get_workspace_dir(workspace_source):
         return os.path.abspath(workspace_source)
 
 
-def container_derive_port(container_name):
+def container_derive_port(name):
     """Derives a stable port from the container name."""
-    hash_object = hashlib.sha256(container_name.encode())
+    hash_object = hashlib.sha256(name.encode())
     hex_dig = hash_object.hexdigest()
     hash_int = int(hex_dig[:8], 16)
     port_range_start = 20000
