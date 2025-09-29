@@ -45,7 +45,7 @@ RUN chown -R abc:abc /config
 RUN /defaults/install_bazel.sh
 
 # install IDEs
-RUN /defaults/install_ide.sh idea 2025.2.1 org.jetbrains.bazel DevKit IdeaVIM
+RUN /defaults/install_ide.sh idea 2025.2.1 com.google.idea.bazel.ijwb DevKit IdeaVIM
 RUN /defaults/install_ide.sh clion 2025.1.5.1 com.google.idea.bazel.clwb IdeaVIM
 RUN /defaults/install_ide.sh clion 2025.2.2 com.google.idea.bazel.clwb IdeaVIM
 
