@@ -60,7 +60,7 @@ def get_workspace_dir(workspace_source):
         if project_name.endswith('.git'):
             project_name = project_name[:-4]
 
-        workspace_dir = f'/tmp/workspaces/{project_name}'
+        workspace_dir = f'~/.cache/clwb-workspaces/{project_name}'
 
         if os.path.isdir(os.path.join(workspace_dir, '.git')):
             log(f"workspace '{project_name}' already cloned in '{workspace_dir}', using existing directory")
