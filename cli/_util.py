@@ -60,7 +60,7 @@ def get_workspace_dir(workspace_source):
         if project_name.endswith('.git'):
             project_name = project_name[:-4]
 
-        workspace_dir = f'~/.cache/clwb-workspaces/{project_name}'
+        workspace_dir = os.path.expanduser(f'~/.cache/clwb-workspaces/{project_name}')
 
         if os.path.isdir(os.path.join(workspace_dir, '.git')):
             log(f"workspace '{project_name}' already cloned in '{workspace_dir}', using existing directory")
@@ -74,7 +74,7 @@ def get_workspace_dir(workspace_source):
                 log_error("command 'git' not found, is it installed and in your PATH?")
             except subprocess.CalledProcessError as e:
                 log_error(f'error cloning repository: {e.stderr.strip()}')
-        return os.path.abspath(workspace_dir)
+        return workspace_dir
     else:
         # It's a local path
         if not os.path.isdir(workspace_source):
