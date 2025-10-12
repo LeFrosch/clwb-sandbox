@@ -10,9 +10,9 @@ VERSION=$2
 shift 2
 PLUGINS=$(echo "$@")
 
-if [[ $(arch) == "arm64" ]]; then
+if [[ $(arch) == "arm64" || $(arch) == "aarch64" ]]; then
   ARCH_SUFFIX="-aarch64"
-else 
+else
   ARCH_SUFFIX=""
 fi
 

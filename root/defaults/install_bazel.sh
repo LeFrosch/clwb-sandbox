@@ -2,7 +2,7 @@
 
 set -e
 
-if [[ $(arch) == "arm64" ]]; then
+if [[ $(arch) == "arm64" || $(arch) == "aarch64" ]]; then
   ARCH_SUFFIX="arm64"
 else 
   ARCH_SUFFIX="amd64"
