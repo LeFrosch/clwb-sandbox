@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 from ._docker import docker_get_client, docker_create_container, docker_get_container
 from ._util import get_workspace_dir, container_derive_port, log, log_error
@@ -23,9 +24,9 @@ def container_create(client, name, workspace_dir, clwb_dir):
         workspace_dir: {'bind': '/config/workspace', 'mode': 'rw'},
         clwb_dir: {'bind': '/config/clwb', 'mode': 'rw'},
     }
-    environment = {  # todo, in practice this should be retrived from `id $(whoami)`
-        'PUID': '1000',
-        'PGID': '1000',
+    environment = {
+        'PUID': '911' if sys.platform == 'darwin' else str(os.getuid()),
+        'PGID': '911' if sys.platform == 'darwin' else str(os.getgid()),
         'TZ': 'Etc/UTC',
     }
 
